@@ -57,13 +57,15 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
     }
 })
 controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
-    if (Summon == 0) {
-        scene.setBackgroundImage(assets.image`Castle - Open`)
-        Summon = 1
-        music.play(music.createSoundEffect(WaveShape.Square, 200, 1, 255, 0, 100, SoundExpressionEffect.None, InterpolationCurve.Curve), music.PlaybackMode.UntilDone)
+    if (!(Summon)) {
+        if (Power.value >= 25) {
+            scene.setBackgroundImage(assets.image`Castle - Open`)
+            Summon = true
+            music.play(music.createSoundEffect(WaveShape.Square, 200, 1, 255, 0, 100, SoundExpressionEffect.None, InterpolationCurve.Curve), music.PlaybackMode.UntilDone)
+        }
     } else {
         scene.setBackgroundImage(assets.image`Castle - Closed`)
-        Summon = 0
+        Summon = false
         music.play(music.createSoundEffect(WaveShape.Square, 200, 1, 255, 0, 100, SoundExpressionEffect.None, InterpolationCurve.Curve), music.PlaybackMode.UntilDone)
     }
 })
@@ -76,6 +78,9 @@ controller.left.onEvent(ControllerButtonEvent.Pressed, function () {
 })
 info.onCountdownEnd(function () {
     Skill2 = true
+})
+sprites.onDestroyed(SpriteKind.Ally, function (sprite) {
+    AllyAlive = false
 })
 controller.right.onEvent(ControllerButtonEvent.Pressed, function () {
     if (Orientation == 1) {
@@ -93,25 +98,11 @@ controller.down.onEvent(ControllerButtonEvent.Pressed, function () {
                 Power.value += 10
             }
             scene.cameraShake(5, 500)
-            animation.stopAnimation(animation.AnimationTypes.All, SpEnemy)
-            SpEnemy.setVelocity(0, 0)
             SpEnemyHP.value += -1
             if (SpEnemyOrientation == 0) {
                 SpEnemy.setVelocity(-20, 0)
-                animation.runImageAnimation(
-                SpEnemy,
-                assets.animation`SpEnemyRight`,
-                200,
-                true
-                )
             } else {
                 SpEnemy.setVelocity(20, 0)
-                animation.runImageAnimation(
-                SpEnemy,
-                assets.animation`SpEnemyLeft`,
-                200,
-                true
-                )
             }
             for (let value of Enemy_List) {
                 animation.stopAnimation(animation.AnimationTypes.All, value)
@@ -152,22 +143,25 @@ info.onLifeZero(function () {
     game.gameOver(false)
 })
 sprites.onDestroyed(SpriteKind.Enemy, function (sprite) {
-    Power.value += 5
+    Power.value += EnemyValue
     info.changeScoreBy(15)
 })
 sprites.onDestroyed(SpriteKind.Projectile, function (sprite) {
     Skill1 = true
 })
 let EnemyBar: StatusBarSprite = null
+let AllyAttacked = false
+let AllyAlive = false
 let Skill2 = false
 let Skill1 = false
+let EnemyValue = 0
 let SpEnemyOrientation = 0
 let EnemyHP_List: StatusBarSprite[] = []
 let EnemyOrientation: number[] = []
 let Enemy_List: Sprite[] = []
 let Power: StatusBarSprite = null
 let Orientation = 0
-let Summon = 0
+let Summon = false
 let SpEnemyHP: StatusBarSprite = null
 let SpEnemy: Sprite = null
 let mySprite: Sprite = null
@@ -176,14 +170,16 @@ scene.setBackgroundImage(assets.image`Castle - Closed`)
 Flame = sprites.create(assets.image`Flame - Right`, SpriteKind.Projectile)
 mySprite = sprites.create(assets.image`The Dragon - Right`, SpriteKind.Player)
 SpEnemy = sprites.create(assets.image`SpEnemy`, SpriteKind.SpecialEnemy)
+let MyAlly = sprites.create(assets.image`Ally`, SpriteKind.Ally)
 SpEnemyHP = statusbars.create(20, 4, StatusBarKind.EnemyHealth)
 let Warning = textsprite.create(" Warning ", 1, 2)
 SpEnemyHP.attachToSprite(SpEnemy)
 sprites.destroy(Flame)
 sprites.destroy(Warning)
 sprites.destroy(SpEnemy)
+sprites.destroy(MyAlly)
 mySprite.setPosition(80, 90)
-Summon = 0
+Summon = false
 Orientation = 0
 info.setScore(0)
 info.setLife(10)
@@ -201,8 +197,10 @@ SpEnemyOrientation = 0
 let EnemyHP = 3
 let EnemyMinSpeed = 3
 let EnemyMaxSpeed = 6
+EnemyValue = 5
 Skill1 = true
 Skill2 = true
+AllyAlive = false
 let SpEnemyState = false
 let DealtDamage = false
 game.onUpdate(function () {
@@ -214,6 +212,20 @@ game.onUpdate(function () {
         } else if (value.overlapsWith(Flame)) {
             sprites.destroy(Flame, effects.fire, 200)
             EnemyHP_List[Enemy_List.indexOf(value)].value += -2
+        } else if (value.overlapsWith(MyAlly)) {
+            if (!(AllyAttacked)) {
+                animation.runImageAnimation(
+                MyAlly,
+                assets.animation`AllyAttack`,
+                100,
+                false
+                )
+                AllyAttacked = true
+                timer.after(400, function () {
+                    EnemyHP_List[Enemy_List.indexOf(value)].value += -3
+                    sprites.destroy(MyAlly)
+                })
+            }
         } else if (value.overlapsWith(mySprite)) {
             if (EnemyState[Enemy_List.indexOf(value)] == false) {
                 if (EnemyOrientation[Enemy_List.indexOf(value)] == 0) {
@@ -272,13 +284,55 @@ game.onUpdate(function () {
     } else if (SpEnemy.overlapsWith(mySprite)) {
         if (!(DealtDamage)) {
             DealtDamage = true
+            music.play(music.createSoundEffect(WaveShape.Square, 1600, 1, 255, 0, 300, SoundExpressionEffect.None, InterpolationCurve.Curve), music.PlaybackMode.UntilDone)
             info.changeLifeBy(-2)
         }
     }
 })
-game.onUpdateInterval(2000, function () {
-    if (Summon == 1) {
-        info.changeScoreBy(0)
+game.onUpdate(function () {
+    if (Summon) {
+        if (!(AllyAlive)) {
+            AllyAlive = true
+            AllyAttacked = false
+            timer.after(200, function () {
+                MyAlly = sprites.create(assets.image`Ally`, SpriteKind.Ally)
+                MyAlly.setPosition(45, 68)
+                MyAlly.setVelocity(25, -25)
+                animation.runImageAnimation(
+                MyAlly,
+                assets.animation`AllyMove - Right`,
+                150,
+                true
+                )
+                timer.after(1500, function () {
+                    MyAlly.setVelocity(0, 0)
+                    timer.after(150, function () {
+                        MyAlly.follow(Enemy_List[0], 75)
+                        if (EnemyOrientation[0] == 1) {
+                            animation.runImageAnimation(
+                            MyAlly,
+                            assets.animation`AllyMove - Left`,
+                            150,
+                            true
+                            )
+                        }
+                    })
+                })
+            })
+        }
+    } else if (AllyAlive) {
+        timer.after(200, function () {
+            sprites.destroy(MyAlly, effects.blizzard, 100)
+        })
+    }
+})
+game.onUpdate(function () {
+    if (Summon) {
+        if (Power.value < 15) {
+            Summon = false
+            scene.setBackgroundImage(assets.image`Castle - Closed`)
+            music.play(music.createSoundEffect(WaveShape.Square, 200, 1, 255, 0, 100, SoundExpressionEffect.None, InterpolationCurve.Curve), music.PlaybackMode.UntilDone)
+        }
     }
 })
 game.onUpdateInterval(2000, function () {
@@ -327,6 +381,11 @@ game.onUpdateInterval(2000, function () {
     }
 })
 game.onUpdateInterval(1000, function () {
+    if (Summon) {
+        Power.value += -2
+    }
+})
+game.onUpdateInterval(1000, function () {
     if (game.runtime() >= 15000) {
         if (game.runtime() > 15000 && game.runtime() < 30000) {
             Difficulty = 2000
@@ -341,9 +400,10 @@ game.onUpdateInterval(1000, function () {
                 EnemyMinSpeed = 4
                 EnemyMaxSpeed = 7
                 SpEnemy_Possibility = 20
+                EnemyValue = 6
             }
             if (Math.percentChance(5)) {
-                Difficulty += -50
+                Difficulty += -100
                 SpEnemy_Possibility += 1
                 if (Math.percentChance(50)) {
                     if (Math.percentChance(50)) {
@@ -356,7 +416,7 @@ game.onUpdateInterval(1000, function () {
         }
     }
 })
-game.onUpdateInterval(1500, function () {
+game.onUpdateInterval(1000, function () {
     Power.value += 1
 })
 game.onUpdateInterval(Difficulty, function () {
