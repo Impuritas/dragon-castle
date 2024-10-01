@@ -8,8 +8,8 @@ namespace SpriteKind {
     export const SpecialEnemy = SpriteKind.create()
 }
 controller.up.onEvent(ControllerButtonEvent.Pressed, function () {
-    if (Power.value >= 2) {
-        Power.value += -2
+    if (Power.value >= 3) {
+        Power.value += -3
         mySprite.setVelocity(0, -50)
         pause(1000)
         mySprite.setVelocity(0, 0)
@@ -87,10 +87,10 @@ controller.right.onEvent(ControllerButtonEvent.Pressed, function () {
 controller.down.onEvent(ControllerButtonEvent.Pressed, function () {
     if (Skill2) {
         if (Power.value >= 20) {
-            if (Enemy_List.length <= 15) {
-                Power.value += Enemy_List.length
+            if (Enemy_List.length / 3 <= 10) {
+                Power.value += Math.round(Enemy_List.length / 5)
             } else {
-                Power.value += 16
+                Power.value += 10
             }
             scene.cameraShake(5, 500)
             animation.stopAnimation(animation.AnimationTypes.All, SpEnemy)
@@ -293,7 +293,7 @@ game.onUpdateInterval(2000, function () {
                     sprites.destroy(Warning)
                     SpEnemy = sprites.create(assets.image`SpEnemy`, SpriteKind.SpecialEnemy)
                     SpEnemyHP = statusbars.create(20, 4, StatusBarKind.EnemyHealth)
-                    SpEnemyHP.max = 5
+                    SpEnemyHP.max = 6
                     SpEnemyHP.attachToSprite(SpEnemy)
                     SpEnemy.setPosition(160, 95)
                     SpEnemy.setVelocity(-50, 0)
@@ -311,7 +311,7 @@ game.onUpdateInterval(2000, function () {
                     sprites.destroy(Warning)
                     SpEnemy = sprites.create(assets.image`SpEnemy`, SpriteKind.SpecialEnemy)
                     SpEnemyHP = statusbars.create(20, 4, StatusBarKind.EnemyHealth)
-                    SpEnemyHP.max = 5
+                    SpEnemyHP.max = 6
                     SpEnemyHP.attachToSprite(SpEnemy)
                     SpEnemy.setPosition(0, 95)
                     SpEnemy.setVelocity(50, 0)
@@ -342,9 +342,16 @@ game.onUpdateInterval(1000, function () {
                 EnemyMaxSpeed = 7
                 SpEnemy_Possibility = 20
             }
-            if (Math.percentChance(1)) {
-                Difficulty += -100
-                SpEnemy_Possibility += 0.5
+            if (Math.percentChance(5)) {
+                Difficulty += -50
+                SpEnemy_Possibility += 1
+                if (Math.percentChance(50)) {
+                    if (Math.percentChance(50)) {
+                        EnemyMinSpeed += 0.5
+                    } else {
+                        EnemyMaxSpeed += 0.5
+                    }
+                }
             }
         }
     }
